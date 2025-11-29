@@ -1,0 +1,135 @@
+import json
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+
+SITE_URL = "https://pedsovet.org/"
+
+def fetch_page_content():
+    try:
+        print("Получаем данные с pedsovet.org...")
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(SITE_URL, timeout=15, headers=headers)
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException as e:
+        print(f"Ошибка подключения: {e}")
+        return None
+
+def extract_article_info(card_element):
+    # Поиск заголовка различными способами
+    title = None
+    title_selectors = [
+        '.material-header',
+        '.article-name',
+        '.post-title',
+        'h2 a', 'h3 a',
+        '.content-header'
+    ]
+    
+    for selector in title_selectors:
+        title_element = card_element.select_one(selector)
+        if title_element and title_element.get_text(strip=True):
+            title = title_element.get_text(strip=True)
+            break
+    
+    # Альтернативный поиск заголовка
+    if not title:
+        main_link = card_element.find('a', href=True)
+        if main_link:
+            title = main_link.get_text(strip=True)
+    
+    if not title or len(title) < 10:
+        return None
+    
+    # Поиск ссылки на статью
+    article_link = None
+    link_element = card_element.find('a', href=True)
+    if link_element and '/article/' in link_element['href']:
+        article_link = link_element['href']
+        if article_link.startswith('/'):
+            article_link = urljoin(SITE_URL, article_link)
+    
+    if not article_link:
+        return None
+    
+    return {
+        "article_title": title,
+        "article_url": article_link
+    }
+
+def get_articles_data():
+    page_content = fetch_page_content()
+    if not page_content:
+        return []
+    
+    soup = BeautifulSoup(page_content, 'html.parser')
+    articles_list = []
+    
+    # Поиск контейнеров со статьями
+    container_selectors = [
+        ".education-material",
+        ".publication-card",
+        ".post-item",
+        "div.article-preview",
+        ".knowledge-item"
+    ]
+    
+    containers = []
+    for selector in container_selectors:
+        found_containers = soup.select(selector)
+        if found_containers:
+            containers.extend(found_containers)
+    
+    # Дополнительный поиск по структуре
+    if not containers:
+        article_blocks = soup.find_all('div', class_=lambda x: x and 'item' in x)
+        containers.extend(article_blocks)
+    
+    print(f"Обнаружено элементов для обработки: {len(containers)}")
+    
+    # Обработка каждого контейнера
+    for container in containers:
+        article_data = extract_article_info(container)
+        if article_data and not any(a['article_url'] == article_data['article_url'] for a in articles_list):
+            articles_list.append(article_data)
+    
+    return articles_list
+
+def store_results(data, output_file="education_articles.json"):
+    try:
+        with open(output_file, "w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+        print(f"Результаты записаны в: {output_file}")
+        return True
+    except Exception as e:
+        print(f"Ошибка записи: {e}")
+        return False
+
+def display_articles(articles):
+    print("\nОбразовательные материалы:")
+    print("=" * 70)
+    
+    for idx, article in enumerate(articles, 1):
+        print(f"{idx:2d}. {article['article_title']}")
+        print(f"     Адрес: {article['article_url']}")
+        print()
+
+def main():
+    print("СБОР ОБРАЗОВАТЕЛЬНЫХ МАТЕРИАЛОВ С PEDSOVET.ORG")
+    print()
+    
+    articles_data = get_articles_data()
+    
+    if articles_data:
+        print(f"Успешно собрано материалов: {len(articles_data)}")
+        if store_results(articles_data):
+            display_articles(articles_data)
+    else:
+        print("Материалы не обнаружены")
+
+if __name__ == "__main__":
+    main()
