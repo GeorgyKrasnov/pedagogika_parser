@@ -5,9 +5,9 @@
 ## Установка
 ```bash
 pip install -r requirements.txt
-
+'''
 Запуск
-bash
+'''bash
 python parse_pedagogy.py
 Результат
 Создается файл education_articles.json со списком статей
