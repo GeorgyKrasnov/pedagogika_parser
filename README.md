@@ -5,10 +5,12 @@
 ## Установка
 ```bash
 pip install -r requirements.txt
-'''
+
 Запуск
-'''bash
+bash
 python parse_pedagogy.py
+
+
 Результат
 Создается файл education_articles.json со списком статей
 
@@ -18,9 +20,6 @@ python parse_pedagogy.py
 
 Зависимости
 Python 3.6+
-
 beautifulsoup4
-
 requests
-
 lxml
