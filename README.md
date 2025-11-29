@@ -21,4 +21,5 @@ python parse_pedagogy.py
 ## Технические требования
 Python 3.6+
 
-## Библиотеки: beautifulsoup4, requests, lxml
+## Библиотеки: 
+beautifulsoup4, requests, lxml
